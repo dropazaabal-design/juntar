@@ -1,10 +1,13 @@
 #!/usr/bin/env node
-/** Local preview server for dist/ — mirrors how a static host resolves paths. */
+/**
+ * Local preview server — mirrors how a static host resolves paths.
+ * Usage: node scripts/serve.mjs [dir]   (default: ./dist)
+ */
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 
-const dist = path.resolve('dist');
+const dist = path.resolve(process.argv[2] || 'dist');
 const PORT = Number(process.env.PORT) || 4173;
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -32,4 +35,4 @@ createServer(async (req, res) => {
   } catch {
     res.writeHead(404, { 'Content-Type': 'text/plain' }).end('404');
   }
-}).listen(PORT, () => console.log(`→ http://localhost:${PORT}`));
+}).listen(PORT, () => console.log(`→ http://localhost:${PORT}  (servindo ${dist})`));
