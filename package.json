@@ -1,0 +1,32 @@
+{
+  "name": "juntarpdf",
+  "version": "1.0.0",
+  "description": "Ferramentas PDF online e gratuitas que rodam inteiramente no navegador — juntarpdf.com",
+  "scripts": {
+    "build": "node src/build.mjs",
+    "check": "node scripts/check.mjs",
+    "images": "node scripts/images.mjs",
+    "fixtures": "node scripts/make-fixtures.mjs .tmp/fixtures",
+    "test": "npm run build && npm run check && npm run fixtures && node scripts/e2e.mjs .tmp/fixtures",
+    "serve": "node scripts/serve.mjs",
+    "dev": "node src/build.mjs && node scripts/serve.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dropazaabal-design/juntar.git"
+  },
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/dropazaabal-design/juntar/issues"
+  },
+  "homepage": "https://github.com/dropazaabal-design/juntar#readme",
+  "dependencies": {
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^4.8.69"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.1"
+  },
+  "private": true,
+  "type": "module"
+}
