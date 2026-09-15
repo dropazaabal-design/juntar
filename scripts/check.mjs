@@ -76,7 +76,29 @@ for (const file of pages) {
   }
 }
 
+/* ---- _redirects: hosts follow a redirect even when a real asset matches, so a
+   rule may never shadow a canonical URL, and a catch-all would 404 the site. */
+const sitemapUrls = new Set(
+  [...(await readFile(path.join(dist, 'sitemap.xml'), 'utf8')).matchAll(/<loc>([^<]+)<\/loc>/g)]
+    .map((m) => m[1].replace(/^https?:\/\/[^/]+/, ''))
+);
+const redirectLines = (await readFile(path.join(dist, '_redirects'), 'utf8'))
+  .split('\n')
+  .map((l) => l.trim())
+  .filter((l) => l && !l.startsWith('#'));
+let redirectCount = 0;
+for (const line of redirectLines) {
+  const [from] = line.split(/\s+/);
+  redirectCount++;
+  if (from === '/*') {
+    errors.push(`_redirects: regra catch-all "${line}" seria aplicada a todas as rotas`);
+  } else if (sitemapUrls.has(from)) {
+    errors.push(`_redirects: "${line}" tornaria ${from} inacessível (está no sitemap)`);
+  }
+}
+
 console.log(`Páginas analisadas: ${pages.length}`);
+console.log(`Regras de redirect: ${redirectCount}`);
 console.log(`Entidades JSON-LD:  ${ldCount}`);
 console.log(`Títulos únicos:     ${titles.size}`);
 if (warns.length) { console.log(`\n⚠ ${warns.length} avisos:`); warns.forEach((w) => console.log('  ' + w)); }

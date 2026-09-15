@@ -467,16 +467,21 @@ self.addEventListener('message', (e) => { if (e.data === 'SKIP_WAITING') self.sk
     path.join(dist, '_redirects'),
     `# Canonical shapes. The merge tool lives at / because the exact-match domain
 # is the strongest signal we have for "juntar pdf".
+#
+# No catch-all rule here on purpose: Cloudflare follows a redirect even when a
+# real asset matches the request, so "/*  /404.html  404" would 404 the whole
+# site. Both Cloudflare (not_found_handling: 404-page) and Netlify already
+# serve /404.html for unmatched paths on their own.
+#
+# Trailing slashes are left to the host's HTML handling, which serves
+# folder/index.html at /folder/ and redirects /folder to it.
 /index.html            /                       301
 /juntar-pdf            /                       301
 /juntar-pdf/           /                       301
 /juntar                /                       301
 /unir_pdf              /unir-pdf/              301
-/ferramentas           /ferramentas/           301
-/guias                 /guias/                 301
 /blog                  /guias/                 301
 /blog/*                /guias/                 301
-/*                     /404.html               404
 `,
     'utf8'
   );
