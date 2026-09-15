@@ -22,14 +22,14 @@ export const coreTools = [
     home: true,
     title: 'Juntar PDF Online Grátis — Unir Vários PDF em Um Só Arquivo',
     description:
-      'Junte vários arquivos PDF em um só, grátis e sem cadastro. Funciona no celular e no computador, sem marca d’água — e seus documentos nunca saem do seu aparelho.',
+      'Precisa juntar arquivos PDF? Una vários documentos em um só, grátis e sem cadastro. Funciona no celular, sem marca d’água — e seus arquivos nunca saem do seu aparelho.',
     keywords: ['juntar pdf', 'juntar pdf online', 'juntar pdf grátis', 'unir pdf', 'combinar pdf', 'mesclar pdf', 'juntar arquivos pdf', 'juntar vários pdf em um só'],
     h1: 'Juntar PDF online grátis',
     eyebrow: 'Sem upload · Sem cadastro · Sem marca d’água',
     lede: 'Una quantos arquivos PDF quiser em um único documento, direto no navegador. Os arquivos são processados no seu próprio aparelho — nada é enviado para nenhum servidor.',
     ui: { accept: '.pdf,application/pdf', multiple: true, cta: 'Juntar e baixar PDF', dropTitle: 'Arraste seus PDFs aqui', dropHint: 'ou toque para escolher os arquivos · até 100 PDFs' },
     intro:
-      '<p><strong>Juntar PDF</strong> é a tarefa mais comum de quem lida com documentos no dia a dia: um contrato dividido em partes, as páginas de um processo, os comprovantes de uma prestação de contas, o currículo com os certificados anexados. O JuntarPDF resolve isso em segundos, direto no navegador do celular ou do computador.</p><p>A diferença para os outros sites é onde a conta é feita: aqui o arquivo unido é montado <strong>dentro do seu próprio navegador</strong>. Ele não é enviado, não é copiado para um servidor e não fica guardado em lugar nenhum — nem por alguns minutos.</p>',
+      '<p><strong>Juntar PDF</strong> é a tarefa mais comum de quem lida com documentos no dia a dia: um contrato dividido em partes, as páginas de um processo, os comprovantes de uma prestação de contas, o currículo com os certificados anexados. Seja para juntar dois PDFs ou trinta, o JuntarPDF resolve em segundos, direto no navegador do celular ou do computador.</p><p>A diferença para os outros sites é onde a conta é feita: aqui o arquivo unido é montado <strong>dentro do seu próprio navegador</strong>. Ele não é enviado, não é copiado para um servidor e não fica guardado em lugar nenhum — nem por alguns minutos.</p>',
     sections: [
       {
         h2: 'Como juntar vários PDF em um só arquivo',
@@ -38,6 +38,10 @@ export const coreTools = [
       {
         h2: 'Por que juntar PDF aqui e não em outro site',
         html: '<p>Quase todos os sites de PDF funcionam da mesma forma: você envia o arquivo, um servidor faz o trabalho e devolve o resultado. Isso significa que o seu contrato, o seu laudo médico ou o seu documento com CPF passou pela máquina de outra pessoa.</p><p>O JuntarPDF usa outra abordagem. Todo o processamento roda em JavaScript no seu navegador, com a mesma tecnologia usada por editores de PDF profissionais. Na prática:</p><ul><li><strong>Nenhum upload acontece.</strong> Você pode conferir: abra as ferramentas do desenvolvedor, aba “Rede”, e junte um PDF. Nenhuma requisição sai com o seu arquivo.</li><li><strong>Funciona sem internet.</strong> Depois da primeira visita, a página fica salva no aparelho e a ferramenta continua funcionando no modo avião.</li><li><strong>É mais rápido.</strong> Não existe tempo de subida nem de descida — só o tempo de montar o arquivo, que costuma ser menos de um segundo.</li><li><strong>Não há limite de tamanho de servidor.</strong> O limite é a memória do seu aparelho, o que na prática permite arquivos bem maiores do que os 10–20 MB que os serviços gratuitos costumam aceitar.</li></ul>',
+      },
+      {
+        h2: 'Juntar, unir, mesclar, combinar: é tudo a mesma coisa',
+        html: '<p>Poucas tarefas têm tantos nomes em português. Se você chegou aqui procurando por um verbo diferente do que usamos, não se preocupe: <strong>todos descrevem a mesma operação</strong> — pegar dois ou mais documentos e produzir um só. A ferramenta no topo desta página faz todos eles.</p><table><thead><tr><th>Termo</th><th>De onde vem</th></tr></thead><tbody><tr><td><strong>Juntar PDF</strong></td><td>A forma mais usada no dia a dia brasileiro. Aparece também como <em>juntar PDFs</em>, <em>juntar arquivos PDF</em>, <em>juntar documentos PDF</em>, <em>juntar arquivos em PDF</em> ou simplesmente <em>PDF juntar</em>.</td></tr><tr><td><strong><a href="/unir-pdf/">Unir PDF</a></strong></td><td>Predomina em Portugal e em textos mais formais.</td></tr><tr><td><strong><a href="/mesclar-pdf/">Mesclar PDF</a></strong></td><td>O termo que a Adobe e a Microsoft usam nos menus em português.</td></tr><tr><td><strong><a href="/combinar-pdf/">Combinar PDF</a></strong></td><td>Comum quando a mistura envolve formatos diferentes — PDF com foto, com Word.</td></tr><tr><td><strong>Agrupar PDF</strong></td><td>Usado quando os arquivos formam um conjunto: um processo, uma prestação de contas.</td></tr><tr><td><strong>Consolidar PDF</strong></td><td>Vocabulário de contabilidade e administração — consolidar relatórios ou notas do período.</td></tr><tr><td><strong>Concatenar PDF</strong></td><td>Termo técnico, de quem vem da programação.</td></tr><tr><td><strong>Unificar PDF</strong></td><td>Variante de unir, frequente em editais e formulários.</td></tr><tr><td><strong>Anexar PDF</strong></td><td>Quando a ideia é acrescentar páginas ao fim de um documento que já existe.</td></tr><tr><td><strong>Fusão de PDF</strong></td><td>Tradução literal de <em>merge</em>, comum em softwares traduzidos.</td></tr></tbody></table><p>Um <strong>juntador de PDF</strong> — como muita gente chama a ferramenta — não precisa de nada além do navegador. Para transformar 2 PDF em 1, ou vinte em um só arquivo, o procedimento é o mesmo: selecionar, ordenar e baixar.</p>',
       },
       {
         h2: 'Juntar PDF pelo celular (Android e iPhone)',
@@ -69,6 +73,9 @@ export const coreTools = [
       { q: 'A ordem dos documentos é mantida?', a: 'Sim, exatamente na sequência que você definir na lista. Arraste os itens antes de gerar o arquivo para ajustar a ordem.' },
       { q: 'A qualidade do PDF diminui ao juntar?', a: 'Não. As páginas são copiadas como estão, sem recompressão. Texto continua selecionável e as imagens mantêm a resolução original.' },
       { q: 'Preciso instalar algum programa?', a: 'Não. Funciona direto no navegador, em qualquer sistema — Windows, macOS, Linux, Android ou iOS.' },
+      { q: 'Como transformar 2 PDF em 1?', a: 'Selecione os dois arquivos, confira a ordem na lista e clique em juntar. O resultado é um único PDF com as páginas dos dois documentos em sequência.' },
+      { q: 'Mesclar, agrupar, consolidar e concatenar PDF é a mesma coisa que juntar?', a: 'Sim. São palavras diferentes para a mesma operação: reunir vários arquivos em um só documento. Esta ferramenta atende a todos esses casos.' },
+      { q: 'Como anexar um PDF ao final de outro?', a: 'Coloque o documento principal em primeiro lugar na lista e o que será anexado logo abaixo. O arquivo final terá as páginas do segundo documento na sequência do primeiro.' },
     ],
     related: ['dividir-pdf', 'comprimir-pdf', 'organizar-pdf', 'jpg-para-pdf', 'pdf-para-word', 'girar-pdf'],
   },
