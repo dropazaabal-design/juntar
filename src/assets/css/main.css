@@ -387,3 +387,26 @@ main { flex: 1 0 auto; }
 .center { text-align: center; }
 .mt0 { margin-top: 0; } .mb0 { margin-bottom: 0; }
 .stack > * + * { margin-top: 14px; }
+
+/* ---------- article figures ---------- */
+.fig { margin: 2.2em 0; }
+.fig svg {
+  width: 100%; height: auto; display: block;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); padding: 16px 14px; color: var(--ink);
+}
+.fig figcaption {
+  margin-top: 11px; font-size: .86rem; line-height: 1.55; color: var(--muted);
+  padding-left: 2px;
+}
+
+/* ---------- soft project note at the end of an article ---------- */
+.project-note {
+  margin: 2.6em 0 0; padding: 17px 20px;
+  border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--surface); font-size: .89rem; line-height: 1.6; color: var(--muted);
+}
+.project-note p { margin: 0; }
+.project-note p + p { margin-top: .6em; }
+.project-note strong { color: var(--ink); }

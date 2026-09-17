@@ -10,12 +10,12 @@ try{res.writeHead(200,{'Content-Type':T[path.extname(f)]||'application/octet-str
 await new Promise(r=>server.listen(0,r)); const base=`http://127.0.0.1:${server.address().port}`;
 await mkdir(out,{recursive:true});
 const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium-1194/chrome-linux/chrome'});
-const shots=[
+const shots=(process.env.SHOTS ? JSON.parse(process.env.SHOTS) : [
   ['/', 'home-desktop', 1440, 3000, false],
   ['/', 'home-mobile', 390, 1400, true],
   ['/ferramentas/', 'ferramentas', 1440, 1900, false],
   ['/comprimir-pdf/', 'comprimir', 1440, 1500, false],
-];
+]);
 for (const [url,name,w,h,mobile] of shots) {
   const c=await b.newContext({viewport:{width:w,height:h},isMobile:mobile,hasTouch:mobile,deviceScaleFactor:mobile?2:1});
   const p=await c.newPage(); await p.goto(base+url,{waitUntil:'load'});

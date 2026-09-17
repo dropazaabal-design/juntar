@@ -174,18 +174,24 @@ ${ctaSection('Comece pela mais usada', 'Juntar vários PDF em um único arquivo 
 
 /* ------------------------------------------------------------- guides */
 
+/** Low-key acquisition note. Articles only; tool pages stay clean. */
+export const projectNote = () => `<aside class="project-note">
+<p><strong>Sobre o ${site.name}</strong> — este é um projeto independente. As ferramentas rodam inteiramente no navegador de quem as usa: não há servidor recebendo documentos, e por isso não há limite de uso nem cadastro.</p>
+<p>O domínio e o projeto estão abertos a propostas. Se isso interessar a você, os detalhes estão na <a href="/aquisicao/" rel="nofollow">página do projeto</a>.</p>
+</aside>`;
+
 export function guideBody(guide) {
   const tool = guide.tool !== undefined && guide.tool !== null ? bySlug.get(guide.tool) : null;
   return `<section class="hero">
 <div class="wrap">
-<span class="eyebrow">${icon('book', 15)} Guia</span>
+<span class="eyebrow">${icon('book', 15)} ${guide.article ? 'Artigo' : 'Guia'}</span>
 <h1>${esc(guide.h1)}</h1>
 <p class="lede">${esc(guide.lede)}</p>
 <p style="font-size:.82rem;color:var(--muted-2);margin-top:14px">Publicado em <time datetime="${guide.date}">${fmtDate(guide.date)}</time>${guide.updated && guide.updated !== guide.date ? ` · Atualizado em <time datetime="${guide.updated}">${fmtDate(guide.updated)}</time>` : ''}</p>
 </div>
 </section>
 ${tool ? `<div class="wrap" style="max-width:820px">${toolWidget(tool)}</div>` : ''}
-<section class="sec"><div class="wrap"><div class="prose">${guide.body}</div></div></section>
+<section class="sec"><div class="wrap"><div class="prose">${guide.body}${guide.article ? projectNote() : ''}</div></div></section>
 ${faqSection(guide.faq)}
 ${relatedGuideSection(guide)}
 ${ctaSection('Todas as ferramentas em um lugar', '17 ferramentas de PDF gratuitas que rodam no seu navegador, sem cadastro e sem upload.')}`;
@@ -220,18 +226,25 @@ function resolveRef(slug) {
 export const fmtDate = (iso) =>
   new Date(iso + 'T12:00:00Z').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 
+const postCard = (g) =>
+  `<a href="/${g.slug}/"><h3>${esc(g.h1)}</h3><p>${esc(g.lede)}</p><time datetime="${g.updated || g.date}">Atualizado em ${fmtDate(g.updated || g.date)}</time></a>`;
+
 export function guidesIndexBody(list) {
+  const articles = list.filter((g) => g.article);
+  const howtos = list.filter((g) => !g.article);
+  const group = (title, sub, items) =>
+    items.length
+      ? `<h2 style="margin-top:2.2em">${esc(title)}</h2><p class="lede" style="margin-bottom:1.4em">${esc(sub)}</p>
+<div class="postlist">${items.map(postCard).join('')}</div>`
+      : '';
   return `<section class="hero"><div class="wrap">
-<span class="eyebrow">${icon('book', 15)} Guias</span>
+<span class="eyebrow">${icon('book', 15)} Guias e artigos</span>
 <h1>Guias de PDF</h1>
-<p class="lede">Tutoriais diretos ao ponto sobre juntar, converter e organizar arquivos PDF — no computador e no celular.</p>
+<p class="lede">Como os arquivos PDF funcionam por dentro e o que fazer quando eles não colaboram — no computador e no celular.</p>
 </div></section>
-<section class="sec" style="padding-top:20px"><div class="wrap" style="max-width:820px">
-<div class="postlist">${list
-    .map(
-      (g) => `<a href="/${g.slug}/"><h3>${esc(g.h1)}</h3><p>${esc(g.lede)}</p><time datetime="${g.updated || g.date}">Atualizado em ${fmtDate(g.updated || g.date)}</time></a>`
-    )
-    .join('')}</div>
+<section class="sec" style="padding-top:8px"><div class="wrap" style="max-width:820px">
+${group('Artigos', 'O mecanismo por trás dos problemas mais comuns, com diagramas.', articles)}
+${group('Como fazer', 'Passo a passo direto para cada tarefa.', howtos)}
 </div></section>
 ${ctaSection('Precisa resolver agora?', 'Todas as ferramentas são gratuitas e rodam no seu navegador.')}`;
 }
