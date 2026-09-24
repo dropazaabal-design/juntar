@@ -7,6 +7,7 @@ import {
   $, $$, createTool, download, baseName, fmtBytes,
   loadPdfLib, loadPdfJs, parseRanges, makeZip, readPdf,
 } from './core.js';
+import { t } from './i18n.js';
 
 /** pdf-lib's standard fonts speak WinAnsi; map the typography that isn't in it. */
 const winAnsi = (s = '') =>
@@ -35,7 +36,7 @@ const radio = (root, name, dflt) => {
 /* ============================ 1. JUNTAR ================================= */
 
 engines.merge = async (files, ctx) => {
-  if (files.length < 2) throw new Error('Escolha pelo menos dois arquivos PDF para juntar.');
+  if (files.length < 2) throw new Error(t('mergeNeedTwo'));
   const PDFLib = await loadPdfLib();
   const out = await PDFLib.PDFDocument.create();
   let total = 0;
@@ -50,7 +51,7 @@ engines.merge = async (files, ctx) => {
   out.setCreator('JuntarPDF.com');
   const bytes = await out.save({ useObjectStreams: true });
   download(new Blob([bytes], { type: 'application/pdf' }), 'juntado.pdf');
-  ctx.say(`Pronto! ${files.length} arquivos unidos em ${total} páginas (${fmtBytes(bytes.length)}).`, 'ok');
+  ctx.say(t('mergeDone', files.length, total, fmtBytes(bytes.length)), 'ok');
 };
 
 /* ============================ 2. DIVIDIR ================================ */
@@ -73,10 +74,10 @@ engines.split = async (files, ctx, root) => {
 
   if (mode === 'ranges') {
     const idx = parseRanges(val(root, 'pages'), total);
-    if (!idx.length) throw new Error(`Informe páginas válidas entre 1 e ${total}. Ex.: 1-3, 7, 10-12`);
+    if (!idx.length) throw new Error(t('splitBadRange', total));
     const bytes = await build(idx);
     download(new Blob([bytes], { type: 'application/pdf' }), `${name}-paginas.pdf`);
-    ctx.say(`Pronto! ${idx.length} página(s) extraída(s) de ${total}.`, 'ok');
+    ctx.say(t('splitRangeDone', idx.length, total), 'ok');
     return;
   }
 
@@ -95,7 +96,7 @@ engines.split = async (files, ctx, root) => {
   } else {
     download(makeZip(entries), `${name}-dividido.zip`);
   }
-  ctx.say(`Pronto! ${entries.length} arquivo(s) gerado(s) a partir de ${total} páginas.`, 'ok');
+  ctx.say(t('splitDone', entries.length, total), 'ok');
 };
 
 /* ============================ 3. COMPRIMIR ============================== */
@@ -134,8 +135,8 @@ engines.compress = async (files, ctx, root) => {
   download(new Blob([bytes], { type: 'application/pdf' }), `${baseName(file.name)}-comprimido.pdf`);
   ctx.say(
     saved > 0.02
-      ? `Pronto! De ${fmtBytes(file.size)} para ${fmtBytes(bytes.length)} — ${Math.round(saved * 100)}% menor.`
-      : `Resultado: ${fmtBytes(bytes.length)}. Este PDF já estava otimizado — a compressão rende pouco em documentos sem imagens.`,
+      ? t('compressDone', fmtBytes(file.size), fmtBytes(bytes.length), Math.round(saved * 100))
+      : t('compressFlat', fmtBytes(bytes.length)),
     saved > 0.02 ? 'ok' : ''
   );
 };
@@ -162,11 +163,11 @@ engines.rotate = async (files, ctx, root) => {
     p.setRotation(PDFLib.degrees(((p.getRotation().angle + angle) % 360 + 360) % 360));
     n++;
   });
-  if (!n) throw new Error('Nenhuma página foi selecionada para girar.');
+  if (!n) throw new Error(t('rotateNone'));
   doc.setProducer('JuntarPDF.com');
   const bytes = await doc.save({ useObjectStreams: true });
   download(new Blob([bytes], { type: 'application/pdf' }), `${baseName(file.name)}-girado.pdf`);
-  ctx.say(`Pronto! ${n} página(s) girada(s) em ${angle}°.`, 'ok');
+  ctx.say(t('rotateDone', n, angle), 'ok');
 };
 
 /* ==================== 5/6/7. REMOVER + EXTRAIR ========================== */
@@ -175,7 +176,7 @@ const copySelected = async (PDFLib, file, pick) => {
   const src = await readPdf(PDFLib, file);
   const total = src.getPageCount();
   const indices = pick(total);
-  if (!indices.length) throw new Error(`Nenhuma página válida foi selecionada (o documento tem ${total}).`);
+  if (!indices.length) throw new Error(t('noValidPages', total));
   const out = await PDFLib.PDFDocument.create();
   const pages = await out.copyPages(src, indices);
   pages.forEach((p) => out.addPage(p));
@@ -187,24 +188,24 @@ engines.removepages = async (files, ctx, root) => {
   const PDFLib = await loadPdfLib();
   const file = files[0];
   const raw = val(root, 'pages');
-  if (!raw.trim()) throw new Error('Informe quais páginas devem ser removidas. Ex.: 2, 5, 9-11');
-  const { bytes, kept, total } = await copySelected(PDFLib, file, (t) => {
-    const drop = new Set(parseRanges(raw, t));
-    if (drop.size >= t) throw new Error('Você marcou todas as páginas para remoção — o PDF ficaria vazio.');
-    return Array.from({ length: t }, (_, i) => i).filter((i) => !drop.has(i));
+  if (!raw.trim()) throw new Error(t('removeAsk'));
+  const { bytes, kept, total } = await copySelected(PDFLib, file, (pageCount) => {
+    const drop = new Set(parseRanges(raw, pageCount));
+    if (drop.size >= pageCount) throw new Error(t('removeAll'));
+    return Array.from({ length: pageCount }, (_, i) => i).filter((i) => !drop.has(i));
   });
   download(new Blob([bytes], { type: 'application/pdf' }), `${baseName(file.name)}-sem-paginas.pdf`);
-  ctx.say(`Pronto! ${total - kept} página(s) removida(s); restaram ${kept}.`, 'ok');
+  ctx.say(t('removeDone', total - kept, kept), 'ok');
 };
 
 engines.extractpages = async (files, ctx, root) => {
   const PDFLib = await loadPdfLib();
   const file = files[0];
   const raw = val(root, 'pages');
-  if (!raw.trim()) throw new Error('Informe quais páginas deseja extrair. Ex.: 1-3, 8');
-  const { bytes, kept } = await copySelected(PDFLib, file, (t) => parseRanges(raw, t));
+  if (!raw.trim()) throw new Error(t('extractAsk'));
+  const { bytes, kept } = await copySelected(PDFLib, file, (pageCount) => parseRanges(raw, pageCount));
   download(new Blob([bytes], { type: 'application/pdf' }), `${baseName(file.name)}-extraido.pdf`);
-  ctx.say(`Pronto! ${kept} página(s) no novo arquivo.`, 'ok');
+  ctx.say(t('extractDone', kept), 'ok');
 };
 
 /* ============================ 8. NUMERAR ================================ */
@@ -241,11 +242,11 @@ engines.pagenumbers = async (files, ctx, root) => {
     page.drawText(text, { x, y, size, font, color: PDFLib.rgb(0.12, 0.14, 0.18) });
     n++;
   });
-  if (!n) throw new Error('Nenhuma página recebeu numeração — confira o valor de “começar na página”.');
+  if (!n) throw new Error(t('numbersNone'));
   doc.setProducer('JuntarPDF.com');
   const bytes = await doc.save({ useObjectStreams: true });
   download(new Blob([bytes], { type: 'application/pdf' }), `${baseName(file.name)}-numerado.pdf`);
-  ctx.say(`Pronto! ${n} página(s) numerada(s).`, 'ok');
+  ctx.say(t('numbersDone', n), 'ok');
 };
 
 /* ============================ 9. MARCA D'ÁGUA =========================== */
@@ -291,7 +292,7 @@ engines.watermark = async (files, ctx, root) => {
   doc.setProducer('JuntarPDF.com');
   const bytes = await doc.save({ useObjectStreams: true });
   download(new Blob([bytes], { type: 'application/pdf' }), `${baseName(file.name)}-marca-dagua.pdf`);
-  ctx.say(`Pronto! Marca d’água aplicada em ${doc.getPageCount()} página(s).`, 'ok');
+  ctx.say(t('watermarkDone', doc.getPageCount()), 'ok');
 };
 
 /* ============================ 10. IMAGENS → PDF ========================= */
@@ -329,7 +330,7 @@ engines.img2pdf = async (files, ctx, root) => {
       try {
         img = isPng ? await out.embedPng(bytes) : await out.embedJpg(bytes);
       } catch {
-        throw new Error(`Não foi possível ler a imagem “${file.name}”.`);
+        throw new Error(t('imageReadFail', file.name));
       }
     }
 
@@ -356,7 +357,7 @@ engines.img2pdf = async (files, ctx, root) => {
   out.setProducer('JuntarPDF.com');
   const bytes = await out.save({ useObjectStreams: true });
   download(new Blob([bytes], { type: 'application/pdf' }), 'imagens.pdf');
-  ctx.say(`Pronto! ${files.length} imagem(ns) em um PDF de ${fmtBytes(bytes.length)}.`, 'ok');
+  ctx.say(t('imgToPdfDone', files.length, fmtBytes(bytes.length)), 'ok');
 };
 
 /* ============================ 11. PDF → IMAGENS ========================= */
@@ -395,7 +396,7 @@ engines.pdf2img = async (files, ctx, root) => {
   } else {
     download(makeZip(entries), `${name}-${format}.zip`);
   }
-  ctx.say(`Pronto! ${entries.length} imagem(ns) ${format.toUpperCase()} a ${dpi} DPI.`, 'ok');
+  ctx.say(t('pdfToImgDone', entries.length, dpi, format.toUpperCase()), 'ok');
 };
 
 /* ============================ 12. PDF → TEXTO =========================== */
@@ -424,10 +425,7 @@ async function extractText(file, ctx) {
   }
   const chars = pages.join('').replace(/\s/g, '').length;
   if (chars < 12) {
-    throw new Error(
-      'Este PDF não contém texto — ele é formado por imagens (documento digitalizado ou fotografado). ' +
-        'Para recuperar o conteúdo seria necessário OCR, que ainda não oferecemos.'
-    );
+    throw new Error(t('noTextLayer'));
   }
   return pages;
 }
@@ -435,14 +433,14 @@ async function extractText(file, ctx) {
 engines.pdf2txt = async (files, ctx, root) => {
   const file = files[0];
   const pages = await extractText(file, ctx);
-  const text = pages.map((p, i) => `--- Página ${i + 1} ---\n${p}`).join('\n\n');
+  const text = pages.map((p, i) => `${t('pagePrefix', i + 1)}\n${p}`).join('\n\n');
   const box = $('[data-output]', root);
   if (box) {
     box.value = text;
     box.closest('[data-output-wrap]')?.removeAttribute('hidden');
   }
   download(new Blob([text], { type: 'text/plain;charset=utf-8' }), `${baseName(file.name)}.txt`);
-  ctx.say(`Pronto! ${pages.length} página(s), ${text.length.toLocaleString('pt-BR')} caracteres.`, 'ok');
+  ctx.say(t('textDone', pages.length, t('numFmt', text.length)), 'ok');
 };
 
 /* ============================ 13. PDF → WORD ============================ */
@@ -502,7 +500,7 @@ engines.pdf2docx = async (files, ctx, root) => {
   });
   const blob = buildDocx(paras);
   download(blob, `${baseName(file.name)}.docx`);
-  ctx.say(`Pronto! ${pages.length} página(s) convertidas em um .docx de ${fmtBytes(blob.size)}.`, 'ok');
+  ctx.say(t('docxDone', pages.length, fmtBytes(blob.size)), 'ok');
 };
 
 /* ============================ 14. WORD → PDF ============================ */
@@ -515,7 +513,7 @@ async function unzip(buffer) {
   for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 66000); i--) {
     if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
   }
-  if (eocd < 0) throw new Error('Arquivo .docx inválido ou corrompido.');
+  if (eocd < 0) throw new Error(t('zipInvalid'));
   const count = view.getUint16(eocd + 10, true);
   let p = view.getUint32(eocd + 16, true);
   const out = new Map();
@@ -538,7 +536,7 @@ async function unzip(buffer) {
       out.set(name, raw);
     } else if (method === 8) {
       if (typeof DecompressionStream === 'undefined') {
-        throw new Error('Seu navegador é antigo demais para abrir arquivos .docx. Atualize o navegador e tente de novo.');
+        throw new Error(t('browserTooOld'));
       }
       const ds = new DecompressionStream('deflate-raw');
       const buf = await new Response(new Blob([raw]).stream().pipeThrough(ds)).arrayBuffer();
@@ -554,7 +552,7 @@ const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 function docxBlocks(xmlText) {
   const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
   const body = doc.getElementsByTagNameNS(W_NS, 'body')[0];
-  if (!body) throw new Error('Não foi possível ler o conteúdo do documento Word.');
+  if (!body) throw new Error(t('docxUnreadable'));
   const blocks = [];
 
   const readParagraph = (p, indent = 0) => {
@@ -608,13 +606,13 @@ function docxBlocks(xmlText) {
 engines.docx2pdf = async (files, ctx, root) => {
   const file = files[0];
   if (/\.doc$/i.test(file.name)) {
-    throw new Error('O formato .doc antigo não é suportado. Abra no Word ou no Google Docs e salve como .docx.');
+    throw new Error(t('docFormatUnsupported'));
   }
   const PDFLib = await loadPdfLib();
   ctx.progress(0.15);
   const zip = await unzip(await file.arrayBuffer());
   const docXml = zip.get('word/document.xml');
-  if (!docXml) throw new Error('Este arquivo não é um documento Word (.docx) válido.');
+  if (!docXml) throw new Error(t('notDocx'));
   const blocks = docxBlocks(new TextDecoder().decode(docXml));
   ctx.progress(0.4);
 
@@ -696,7 +694,7 @@ engines.docx2pdf = async (files, ctx, root) => {
   pdf.setProducer('JuntarPDF.com');
   const bytes = await pdf.save({ useObjectStreams: true });
   download(new Blob([bytes], { type: 'application/pdf' }), `${baseName(file.name)}.pdf`);
-  ctx.say(`Pronto! ${pdf.getPageCount()} página(s) geradas (${fmtBytes(bytes.length)}).`, 'ok');
+  ctx.say(t('docx2pdfDone', pdf.getPageCount(), fmtBytes(bytes.length)), 'ok');
 };
 
 /* ============================ 15. ORGANIZAR ============================= */
@@ -707,7 +705,7 @@ engines.organize = async (files, ctx, root) => {
   const PDFLib = await loadPdfLib();
   const state = root._pages || [];
   const keep = state.filter((p) => !p.removed);
-  if (!keep.length) throw new Error('Todas as páginas foram removidas — sobre pelo menos uma.');
+  if (!keep.length) throw new Error(t('organizeEmpty'));
 
   const src = await readPdf(PDFLib, files[0]);
   const out = await PDFLib.PDFDocument.create();
@@ -720,7 +718,7 @@ engines.organize = async (files, ctx, root) => {
   out.setProducer('JuntarPDF.com');
   const bytes = await out.save({ useObjectStreams: true });
   download(new Blob([bytes], { type: 'application/pdf' }), `${baseName(files[0].name)}-organizado.pdf`);
-  ctx.say(`Pronto! Documento salvo com ${keep.length} página(s).`, 'ok');
+  ctx.say(t('organizeDone', keep.length), 'ok');
 };
 
 engines.organize.onFiles = async (files, ctx, root) => {
@@ -740,7 +738,7 @@ engines.organize.onFiles = async (files, ctx, root) => {
   const n = Math.min(doc.numPages, THUMB_CAP);
   root._pages = Array.from({ length: doc.numPages }, (_, i) => ({ index: i, rotate: 0, removed: false }));
   if (panel) panel.hidden = false;
-  ctx.say(`Carregando ${doc.numPages} página(s)…`);
+  ctx.say(t('loadingPages', doc.numPages));
 
   const paint = () => {
     wrap.innerHTML = root._pages
@@ -748,11 +746,11 @@ engines.organize.onFiles = async (files, ctx, root) => {
         (p, i) => `<div class="thumb${p.removed ? ' off' : ''}" data-p="${i}">
 <canvas data-c="${p.index}" style="transform:rotate(${p.rotate}deg)"></canvas>
 <span class="tn">${i + 1}</span>
-<button class="tx" type="button" data-act="del" data-i="${i}" aria-label="Remover página ${i + 1}">${p.removed ? '+' : '×'}</button>
+<button class="tx" type="button" data-act="del" data-i="${i}" aria-label="${t('removePageAria', i + 1)}">${p.removed ? '+' : '×'}</button>
 <div style="display:flex;gap:2px;padding:4px;background:var(--surface-2)">
-<button class="iconbtn" type="button" data-act="left" data-i="${i}" aria-label="Mover página ${i + 1} para a esquerda" style="width:auto;flex:1;height:26px">‹</button>
-<button class="iconbtn" type="button" data-act="rot" data-i="${i}" aria-label="Girar página ${i + 1}" style="width:auto;flex:1;height:26px">↻</button>
-<button class="iconbtn" type="button" data-act="right" data-i="${i}" aria-label="Mover página ${i + 1} para a direita" style="width:auto;flex:1;height:26px">›</button>
+<button class="iconbtn" type="button" data-act="left" data-i="${i}" aria-label="${t('movePageLeftAria', i + 1)}" style="width:auto;flex:1;height:26px">‹</button>
+<button class="iconbtn" type="button" data-act="rot" data-i="${i}" aria-label="${t('rotatePageAria', i + 1)}" style="width:auto;flex:1;height:26px">↻</button>
+<button class="iconbtn" type="button" data-act="right" data-i="${i}" aria-label="${t('movePageRightAria', i + 1)}" style="width:auto;flex:1;height:26px">›</button>
 </div></div>`
       )
       .join('');
@@ -785,8 +783,8 @@ engines.organize.onFiles = async (files, ctx, root) => {
   }
   ctx.progress(-1);
   ctx.say(doc.numPages > THUMB_CAP
-    ? `${doc.numPages} páginas carregadas (miniaturas exibidas para as primeiras ${THUMB_CAP}).`
-    : `${doc.numPages} página(s) prontas para organizar.`);
+    ? t('pagesLoadedCapped', doc.numPages, THUMB_CAP)
+    : t('pagesReady', doc.numPages));
 
   if (!wrap._wired) {
     wrap._wired = true;
@@ -822,8 +820,8 @@ engines.organize.onFiles = async (files, ctx, root) => {
 engines.sign = async (files, ctx, root) => {
   const sig = root._sigData;
   const place = root._place;
-  if (!sig) throw new Error('Desenhe sua assinatura no quadro antes de continuar.');
-  if (!place) throw new Error('Toque na pré-visualização da página para escolher onde a assinatura vai ficar.');
+  if (!sig) throw new Error(t('signNoDraw'));
+  if (!place) throw new Error(t('signNoPlace'));
 
   const PDFLib = await loadPdfLib();
   const doc = await readPdf(PDFLib, files[0]);
@@ -842,7 +840,7 @@ engines.sign = async (files, ctx, root) => {
   doc.setProducer('JuntarPDF.com');
   const bytes = await doc.save({ useObjectStreams: true });
   download(new Blob([bytes], { type: 'application/pdf' }), `${baseName(files[0].name)}-assinado.pdf`);
-  ctx.say(`Pronto! Assinatura aplicada na página ${place.page + 1}.`, 'ok');
+  ctx.say(t('signDone', place.page + 1), 'ok');
 };
 
 engines.sign.onFiles = async (files, ctx, root) => {
@@ -862,7 +860,7 @@ engines.sign.onFiles = async (files, ctx, root) => {
   root._place = null;
 
   if (select) {
-    select.innerHTML = Array.from({ length: doc.numPages }, (_, i) => `<option value="${i}">Página ${i + 1}</option>`).join('');
+    select.innerHTML = Array.from({ length: doc.numPages }, (_, i) => `<option value="${i}">${t('pageOption', i + 1)}</option>`).join('');
     select.value = '0';
   }
 
@@ -900,7 +898,7 @@ engines.sign.onFiles = async (files, ctx, root) => {
         marker.style.width = scale * 100 + '%';
         marker.src = root._sigUrl;
       }
-      ctx.say('Posição definida. Ajuste o tamanho se precisar e clique em assinar.');
+      ctx.say(t('signPlaced'));
     });
   }
 };
@@ -990,16 +988,16 @@ function validatorFor(engine) {
   if (engine === 'img2pdf') {
     return (files) => (files.every((f) => IMAGE_RE.test(f.name) || /^image\//.test(f.type))
       ? null
-      : 'Escolha apenas imagens JPG, PNG ou WEBP.');
+      : t('onlyImages'));
   }
   if (engine === 'docx2pdf') {
     return (files) => (/\.docx$/i.test(files[0]?.name || '')
       ? null
-      : 'Escolha um arquivo do Word no formato .docx (o formato .doc antigo não é aceito).');
+      : t('onlyDocx'));
   }
   return (files) => (files.every((f) => /\.pdf$/i.test(f.name) || f.type === 'application/pdf')
     ? null
-    : 'Escolha apenas arquivos PDF.');
+    : t('onlyPdf'));
 }
 
 $$('[data-tool]').forEach((root) => {

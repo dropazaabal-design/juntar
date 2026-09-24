@@ -4,6 +4,8 @@
    and loaded lazily, only when the visitor actually picks a file.
    ========================================================================= */
 
+import { t } from './i18n.js';
+
 export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
@@ -37,8 +39,8 @@ export function loadPdfLib() {
       if (window.PDFLib) return resolve(window.PDFLib);
       const s = document.createElement('script');
       s.src = '/vendor/pdf-lib.min.js';
-      s.onload = () => (window.PDFLib ? resolve(window.PDFLib) : reject(new Error('pdf-lib indisponível')));
-      s.onerror = () => reject(new Error('Não foi possível carregar o motor de PDF.'));
+      s.onload = () => (window.PDFLib ? resolve(window.PDFLib) : reject(new Error(t('pdflibFail'))));
+      s.onerror = () => reject(new Error(t('engineLoadFail')));
       document.head.appendChild(s);
     });
   }
@@ -183,9 +185,9 @@ export function createTool({ root, multiple, accept, onRun, onFiles, validate })
 <span class="grab" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.4"/><circle cx="15" cy="6" r="1.4"/><circle cx="9" cy="12" r="1.4"/><circle cx="15" cy="12" r="1.4"/><circle cx="9" cy="18" r="1.4"/><circle cx="15" cy="18" r="1.4"/></svg></span>
 <span class="fname">${i + 1}. ${f.name.replace(/[<>&]/g, '')}</span>
 <span class="fmeta">${fmtBytes(f.size)}</span>
-<button class="iconbtn" type="button" data-up="${i}" title="Mover para cima" aria-label="Mover ${f.name} para cima"${i === 0 ? ' disabled' : ''}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg></button>
-<button class="iconbtn" type="button" data-down="${i}" title="Mover para baixo" aria-label="Mover ${f.name} para baixo"${i === files.length - 1 ? ' disabled' : ''}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
-<button class="iconbtn" type="button" data-del="${i}" title="Remover" aria-label="Remover ${f.name}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+<button class="iconbtn" type="button" data-up="${i}" title="${t('moveUp')}" aria-label="${t('moveUpAria', f.name)}"${i === 0 ? ' disabled' : ''}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg></button>
+<button class="iconbtn" type="button" data-down="${i}" title="${t('moveDown')}" aria-label="${t('moveDownAria', f.name)}"${i === files.length - 1 ? ' disabled' : ''}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+<button class="iconbtn" type="button" data-del="${i}" title="${t('remove')}" aria-label="${t('removeAria', f.name)}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
 </li>`
       )
       .join('');
@@ -287,14 +289,14 @@ export function createTool({ root, multiple, accept, onRun, onFiles, validate })
       if (!files.length) return;
       const label = runBtn.textContent;
       runBtn.disabled = true;
-      runBtn.textContent = 'Processando…';
+      runBtn.textContent = t('processing');
       say('');
       progress(0.02);
       try {
         await onRun(files, ctx);
       } catch (err) {
         console.error(err);
-        say(err && err.message ? err.message : 'Não foi possível processar este arquivo.', 'err');
+        say(err && err.message ? err.message : t('genericFail'), 'err');
       } finally {
         progress(-1);
         runBtn.disabled = files.length === 0;
@@ -314,8 +316,8 @@ export async function readPdf(PDFLib, file, opts = {}) {
   } catch (err) {
     const msg = String((err && err.message) || '');
     if (/encrypt|password/i.test(msg)) {
-      throw new Error(`“${file.name}” está protegido por senha. Remova a proteção antes de continuar.`);
+      throw new Error(t('passwordProtected', file.name));
     }
-    throw new Error(`“${file.name}” não parece ser um PDF válido ou está corrompido.`);
+    throw new Error(t('invalidPdf', file.name));
   }
 }
