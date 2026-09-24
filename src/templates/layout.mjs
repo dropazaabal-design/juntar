@@ -1,4 +1,5 @@
-import { site, primaryNav, footerNav, trustBadges } from '../data/site.mjs';
+import { site } from '../data/site.mjs';
+import { locales, localeOf } from '../data/locales.mjs';
 import { icon } from './icons.mjs';
 
 export const esc = (s = '') =>
@@ -17,8 +18,10 @@ function analytics() {
 /**
  * Builds the schema.org @graph. Every page gets WebSite + Organization +
  * WebPage + BreadcrumbList; tool/guide pages add their own entities on top.
+ * WebSite/Organization stay pinned to the pt-BR root ids: they describe the
+ * one business behind all three language trees, not a per-locale entity.
  */
-function jsonLd(page) {
+function jsonLd(page, L) {
   const pageUrl = abs(page.url);
   const graph = [
     {
@@ -27,7 +30,7 @@ function jsonLd(page) {
       url: `${site.origin}/`,
       name: site.name,
       description: site.description,
-      inLanguage: site.lang,
+      inLanguage: locales.pt.code,
       publisher: { '@id': `${site.origin}/#org` },
       potentialAction: {
         '@type': 'SearchAction',
@@ -43,8 +46,8 @@ function jsonLd(page) {
       logo: { '@type': 'ImageObject', url: `${site.origin}/icons/icon-512.png`, width: 512, height: 512 },
       email: site.email,
       foundingDate: String(site.foundingYear),
-      areaServed: ['BR', 'PT', 'AO', 'MZ'],
-      knowsLanguage: ['pt-BR', 'pt-PT'],
+      areaServed: L.areaServed,
+      knowsLanguage: Object.values(locales).flatMap((l) => l.knowsLanguage),
     },
     {
       '@type': page.schema?.article ? 'Article' : 'WebPage',
@@ -52,7 +55,7 @@ function jsonLd(page) {
       url: pageUrl,
       name: page.title,
       description: page.description,
-      inLanguage: site.lang,
+      inLanguage: L.code,
       isPartOf: { '@id': `${site.origin}/#website` },
       ...(page.schema?.article
         ? {
@@ -68,7 +71,7 @@ function jsonLd(page) {
     },
   ];
 
-  const crumbs = [{ name: 'Início', url: '/' }, ...(page.breadcrumbs || [])];
+  const crumbs = [{ name: L.crumbsHome, url: L.home }, ...(page.breadcrumbs || [])];
   graph.push({
     '@type': 'BreadcrumbList',
     '@id': `${pageUrl}#crumbs`,
@@ -91,11 +94,11 @@ function jsonLd(page) {
       applicationCategory: 'UtilitiesApplication',
       applicationSubCategory: 'PDF',
       operatingSystem: 'Android, iOS, Windows, macOS, Linux, ChromeOS',
-      browserRequirements: 'JavaScript habilitado',
-      inLanguage: site.lang,
+      browserRequirements: L.jsRequired,
+      inLanguage: L.code,
       isAccessibleForFree: true,
-      permissions: 'Nenhuma. O arquivo é lido apenas na memória do navegador.',
-      offers: { '@type': 'Offer', price: '0', priceCurrency: 'BRL', availability: 'https://schema.org/InStock' },
+      permissions: L.permissionsText,
+      offers: { '@type': 'Offer', price: '0', priceCurrency: L.currency, availability: 'https://schema.org/InStock' },
       featureList: sw.features,
       publisher: { '@id': `${site.origin}/#org` },
     });
@@ -109,9 +112,9 @@ function jsonLd(page) {
       name: h.name,
       description: h.description,
       totalTime: h.totalTime || 'PT1M',
-      estimatedCost: { '@type': 'MonetaryAmount', currency: 'BRL', value: '0' },
-      supply: { '@type': 'HowToSupply', name: 'Arquivo PDF' },
-      tool: { '@type': 'HowToTool', name: 'Navegador de internet' },
+      estimatedCost: { '@type': 'MonetaryAmount', currency: L.currency, value: '0' },
+      supply: { '@type': 'HowToSupply', name: L.supplyText },
+      tool: { '@type': 'HowToTool', name: L.toolText },
       step: h.steps.map((st, i) => ({
         '@type': 'HowToStep',
         position: i + 1,
@@ -138,7 +141,33 @@ function jsonLd(page) {
     .replace(/</g, '\\u003c')}</script>`;
 }
 
-function head(page, css) {
+/**
+ * hreflang alternates. `page.altLangs` (set by build.mjs from
+ * locales.crossLinks for the handful of pages that exist in more than one
+ * language) lists every sibling URL; absent that, a page only has itself,
+ * exactly as before multi-language support existed. x-default points at the
+ * Portuguese URL since that is the primary market this domain serves.
+ */
+function hreflangTags(page) {
+  const pageUrl = abs(page.url);
+  if (!page.altLangs) {
+    return `<link rel="alternate" hreflang="pt-BR" href="${pageUrl}">
+<link rel="alternate" hreflang="pt-PT" href="${pageUrl}">
+<link rel="alternate" hreflang="pt" href="${pageUrl}">
+<link rel="alternate" hreflang="x-default" href="${pageUrl}">`;
+  }
+  const tags = [];
+  if (page.altLangs.pt) {
+    const u = abs(page.altLangs.pt);
+    tags.push(`<link rel="alternate" hreflang="pt-BR" href="${u}">`, `<link rel="alternate" hreflang="pt-PT" href="${u}">`, `<link rel="alternate" hreflang="pt" href="${u}">`);
+  }
+  if (page.altLangs.en) tags.push(`<link rel="alternate" hreflang="en" href="${abs(page.altLangs.en)}">`);
+  if (page.altLangs.es) tags.push(`<link rel="alternate" hreflang="es" href="${abs(page.altLangs.es)}">`);
+  tags.push(`<link rel="alternate" hreflang="x-default" href="${abs(page.altLangs.pt || page.url)}">`);
+  return tags.join('\n');
+}
+
+function head(page, css, L) {
   const pageUrl = abs(page.url);
   const og = abs(page.ogImage || '/og/default.jpg');
   return `<meta charset="utf-8">
@@ -152,16 +181,13 @@ ${page.keywords ? `<meta name="keywords" content="${esc(page.keywords.join(', ')
 <meta name="color-scheme" content="light dark">
 <meta name="author" content="${site.name}">
 <meta name="format-detection" content="telephone=no">
-<link rel="alternate" hreflang="pt-BR" href="${pageUrl}">
-<link rel="alternate" hreflang="pt-PT" href="${pageUrl}">
-<link rel="alternate" hreflang="pt" href="${pageUrl}">
-<link rel="alternate" hreflang="x-default" href="${pageUrl}">
+${hreflangTags(page)}
 <meta property="og:type" content="${page.schema?.article ? 'article' : 'website'}">
 <meta property="og:site_name" content="${site.name}">
 <meta property="og:title" content="${esc(page.ogTitle || page.title)}">
 <meta property="og:description" content="${esc(page.description)}">
 <meta property="og:url" content="${pageUrl}">
-<meta property="og:locale" content="${site.locale}">
+<meta property="og:locale" content="${L.ogLocale}">
 <meta property="og:image" content="${og}">
 <meta property="og:image:type" content="image/jpeg">
 <meta property="og:image:width" content="1200">
@@ -176,42 +202,43 @@ ${page.keywords ? `<meta name="keywords" content="${esc(page.keywords.join(', ')
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.webmanifest">
 <style>${css}</style>
-${jsonLd(page)}
+${jsonLd(page, L)}
 ${analytics()}`;
 }
 
 /* --------------------------------------------------------------- chrome */
 
-const logo = `<a class="logo" href="/" aria-label="${site.name} — página inicial">
+const logoFor = (L) => `<a class="logo" href="${L.home}" aria-label="${site.name} \u2014 ${L.crumbsHome}">
 <span class="logo-badge" aria-hidden="true">PDF</span>
 <span style="color:var(--ink)">${site.brandMark}<b>${site.brandAccent}</b><span>${site.brandTld}</span></span>
 </a>`;
 
-function header(page) {
-  const links = primaryNav
+function header(page, L) {
+  const links = L.nav
     .map((l) => `<a href="${l.href}"${l.href === page.url ? ' aria-current="page"' : ''}>${l.label}</a>`)
     .join('');
-  const mobile = [...primaryNav, { href: '/ferramentas/', label: 'Todas as ferramentas' }, { href: '/guias/', label: 'Guias' }]
-    .map((l) => `<a href="${l.href}">${l.label}</a>`)
-    .join('');
+  const allToolsHref = L.home === '/' ? '/ferramentas/' : L.home;
+  const guidesHref = L.home === '/' ? '/guias/' : L.home;
+  const mobileExtra = L.home === '/' ? [{ href: allToolsHref, label: L.navAllLabel }, { href: guidesHref, label: L.navGuidesLabel }] : [];
+  const mobile = [...L.nav, ...mobileExtra].map((l) => `<a href="${l.href}">${l.label}</a>`).join('');
   return `<header class="hdr">
 <div class="wrap hdr-in">
-${logo}
-<nav class="nav" aria-label="Principal">${links}<a class="nav-all" href="/ferramentas/">Todas as ferramentas ${icon('chev')}</a></nav>
-<button class="menu-btn" type="button" aria-expanded="false" aria-controls="m-nav" data-menu>${icon('menu')} Menu</button>
+${logoFor(L)}
+<nav class="nav" aria-label="${L.navPrimaryAria}">${links}${L.home === '/' ? `<a class="nav-all" href="${allToolsHref}">${L.navAllLabel} ${icon('chev')}</a>` : ''}</nav>
+<button class="menu-btn" type="button" aria-expanded="false" aria-controls="m-nav" data-menu>${icon('menu')} ${L.menuLabel}</button>
 </div>
 <div class="menu-panel" id="m-nav"><div class="wrap">${mobile}</div></div>
 </header>`;
 }
 
-function trustRow() {
-  return `<div class="wrap"><div class="trust">${trustBadges
+function trustRow(L) {
+  return `<div class="wrap"><div class="trust">${L.trustBadges
     .map((b) => `<span>${icon(b.icon, 17)} ${b.label}</span>`)
     .join('')}</div></div>`;
 }
 
-function footer() {
-  const cols = footerNav
+function footer(L) {
+  const cols = L.footer
     .map(
       (c) => `<div><h4>${c.title}</h4><ul>${c.links
         .map((l) => `<li><a href="${l.href}">${l.label}</a></li>`)
@@ -222,17 +249,17 @@ function footer() {
 <div class="wrap">
 <div class="ftr-grid">${cols}</div>
 <div class="ftr-btm">
-<p style="margin:0">© ${site.foundingYear}–<span data-year>${new Date().getFullYear()}</span> ${site.name} — ${site.tagline}</p>
-<p style="margin:0"><a href="/aquisicao/" rel="nofollow">Domínio &amp; projeto</a></p>
+<p style="margin:0">\u00a9 ${site.foundingYear}\u2013<span data-year>${new Date().getFullYear()}</span> ${site.name} \u2014 ${L.tagline}</p>
+<p style="margin:0"><a href="/aquisicao/" rel="nofollow">${L.domainNoteLabel}</a></p>
 </div>
 </div>
 </footer>`;
 }
 
-function crumbsHtml(page) {
+function crumbsHtml(page, L) {
   if (!page.breadcrumbs?.length) return '';
-  const items = [{ name: 'Início', url: '/' }, ...page.breadcrumbs];
-  return `<div class="wrap"><nav class="crumbs" aria-label="Trilha de navegação"><ol>${items
+  const items = [{ name: L.crumbsHome, url: L.home }, ...page.breadcrumbs];
+  return `<div class="wrap"><nav class="crumbs" aria-label="${L.crumbsAria}"><ol>${items
     .map((c, i) =>
       i === items.length - 1
         ? `<li><span aria-current="page">${esc(c.name)}</span></li>`
@@ -244,20 +271,21 @@ function crumbsHtml(page) {
 /* --------------------------------------------------------------- render */
 
 export function renderPage(page, { css, inlineJs = '' }) {
+  const L = localeOf(page.locale);
   return `<!DOCTYPE html>
-<html lang="${site.lang}" dir="ltr">
+<html lang="${L.code}" dir="${L.dir}">
 <head>
-${head(page, css)}
+${head(page, css, L)}
 </head>
 <body>
-<a class="skip" href="#conteudo">Ir para o conteúdo</a>
-${header(page)}
-${crumbsHtml(page)}
+<a class="skip" href="#conteudo">${L.skipLabel}</a>
+${header(page, L)}
+${crumbsHtml(page, L)}
 <main id="conteudo">
 ${page.bodyHtml}
 </main>
-${trustRow()}
-${footer()}
+${trustRow(L)}
+${footer(L)}
 <script>
 document.querySelectorAll('[data-year]').forEach(function(e){e.textContent=new Date().getFullYear()});
 (function(){var b=document.querySelector('[data-menu]'),p=document.getElementById('m-nav');
