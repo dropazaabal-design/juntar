@@ -9,6 +9,8 @@ import { chromium } from 'playwright';
 import { site } from '../src/data/site.mjs';
 import { tools, toolUrl } from '../src/data/tools.mjs';
 import { guides } from '../src/data/guides.mjs';
+import { toolsEn } from '../src/data/i18n/tools-en.mjs';
+import { toolsEs } from '../src/data/i18n/tools-es.mjs';
 
 const pub = path.resolve('public');
 const CHROME = process.env.CHROME_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
@@ -88,6 +90,16 @@ await shot(ogCard('17 ferramentas', 'Ferramentas PDF online e gratuitas', 'Junta
 await shot(ogCard('Guias', 'Guias de PDF', 'Tutoriais diretos ao ponto, no computador e no celular.'), 1200, 630, path.join(pub, 'og/guias.jpg'));
 await shot(ogCard('Ferramentas PDF', site.name, site.description.slice(0, 118)), 1200, 630, path.join(pub, 'og/default.jpg'));
 n += 3;
+
+/* --- en/es flagship cards --- */
+const I18N_KICKER = { en: 'Free tool', es: 'Herramienta gratis' };
+for (const [locale, list] of [['en', toolsEn], ['es', toolsEs]]) {
+  for (const t of list) {
+    await shot(ogCard(t.home ? I18N_KICKER[locale] : I18N_KICKER[locale], t.h1, t.lede.slice(0, 118)), 1200, 630,
+      path.join(pub, 'og', `${locale}-${t.slug || 'home'}.jpg`));
+    n++;
+  }
+}
 
 await browser.close();
 console.log(`✓ 6 ícones + ${n} cartões Open Graph gerados em public/`);

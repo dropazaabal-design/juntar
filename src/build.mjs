@@ -13,14 +13,33 @@ import { site } from './data/site.mjs';
 import { tools, toolUrl } from './data/tools.mjs';
 import { guides } from './data/guides.mjs';
 import { staticPages } from './data/static-pages.mjs';
+import { crossLinks } from './data/locales.mjs';
+import { toolsEn, toolUrlEn } from './data/i18n/tools-en.mjs';
+import { toolsEs, toolUrlEs } from './data/i18n/tools-es.mjs';
 import { renderPage } from './templates/layout.mjs';
 import * as P from './templates/pages.mjs';
+import { flagshipToolBody } from './templates/pages-i18n.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist');
 const BUILD_DATE = new Date().toISOString().slice(0, 10);
 
 P.registerGuides(guides);
+
+/**
+ * Reciprocal hreflang: a page whose URL appears in any locales.crossLinks
+ * entry gets the full {pt,en,es} alternate set; everything else (31 of the
+ * 37 Portuguese pages, all of the guides) keeps the self+x-default tags it
+ * always had. This is what makes the alternates symmetric — Google
+ * documents that a one-directional hreflang (A points to B but B doesn't
+ * point back to A) can be ignored entirely.
+ */
+function altLangsFor(url) {
+  for (const entry of Object.values(crossLinks)) {
+    if (entry.pt === url || entry.en === url || entry.es === url) return entry;
+  }
+  return undefined;
+}
 
 /* ------------------------------------------------------------- helpers */
 
@@ -86,6 +105,7 @@ async function build() {
       breadcrumbs: tool.home
         ? []
         : [{ name: 'Ferramentas', url: '/ferramentas/' }, { name: tool.name, url }],
+      altLangs: altLangsFor(url),
       schema: {
         software: {
           name: `${tool.name} — ${site.name}`,
@@ -99,6 +119,45 @@ async function build() {
     };
     emitted.push(await emit(url, renderPage(page, { css, inlineJs: toolScript })));
     sitemap.push({ loc: url, priority: tool.home ? '1.0' : '0.9', changefreq: 'weekly' });
+  }
+
+  /* ---- en/es flagship tools ----------------------------------------
+     Six pages each, not the full Portuguese footprint — see tools-en.mjs
+     for why. Every page here has a crossLinks entry, so altLangsFor always
+     resolves and the pt/en/es triangle stays reciprocal. */
+  const i18nTrees = [
+    { locale: 'en', list: toolsEn, urlFor: toolUrlEn },
+    { locale: 'es', list: toolsEs, urlFor: toolUrlEs },
+  ];
+  for (const { locale, list, urlFor } of i18nTrees) {
+    const siblings = list.map((t) => ({ slug: t.slug, url: urlFor(t.slug), name: t.name }));
+    for (const tool of list) {
+      const url = urlFor(tool.slug);
+      const page = {
+        url,
+        locale,
+        title: tool.title,
+        description: tool.description,
+        keywords: tool.keywords,
+        h1: tool.h1,
+        ogImage: `/og/${locale}-${tool.slug || 'home'}.jpg`,
+        updated: BUILD_DATE,
+        breadcrumbs: tool.home ? [] : [{ name: tool.name, url }],
+        altLangs: altLangsFor(url),
+        schema: {
+          software: {
+            name: `${tool.name} — ${site.name}`,
+            description: tool.description,
+            features: (tool.howto?.steps || []).map((s) => s.name),
+          },
+          howto: tool.howto,
+          faq: tool.faq,
+        },
+        bodyHtml: flagshipToolBody(tool, locale, siblings),
+      };
+      emitted.push(await emit(url, renderPage(page, { css, inlineJs: toolScript })));
+      sitemap.push({ loc: url, priority: tool.home ? '0.9' : '0.7', changefreq: 'weekly' });
+    }
   }
 
   /* ---- guides ------------------------------------------------------ */
